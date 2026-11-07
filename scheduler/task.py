@@ -5,10 +5,12 @@ class Task:
         drone_id,
         arrival_time,
         burst_time,
-        priority
+        priority,
+        mission_name="Other"
     ):
         self.task_id = task_id
         self.drone_id = drone_id
+        self.mission_name = mission_name
 
         self.arrival_time = arrival_time
         self.burst_time = burst_time
@@ -23,3 +25,5 @@ class Task:
         self.waiting_time = None
         self.turnaround_time = None
         self.response_time = None
+
+        

@@ -10,10 +10,7 @@ class TaskGenerator:
 
         task_id = f"T{self.task_counter:03d}"
 
-        # Create different priority levels:
-        # 1 = Highest
-        # 2 = Medium
-        # 3 = Lowest
+        
         priority = ((self.task_counter - 1) % 3) + 1
 
         task = Task(

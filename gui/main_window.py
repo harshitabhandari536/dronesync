@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QFrame, QGroupBox, QComboBox, QSpinBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
-    QListWidget, QStackedWidget, QScrollArea, QSizePolicy
+    QListWidget, QStackedWidget, QScrollArea, QSizePolicy, QLineEdit
 )
 
 
@@ -499,6 +499,36 @@ class MainWindow(QMainWindow):
             self.failure_combo.addItem(label, drone.drone_id)
         task_layout.addWidget(self.drone_combo, 0, 1)
 
+        # Mission Library
+        task_layout.addWidget(QLabel("Select mission"), 1, 0)
+        self.mission_combo = QComboBox()
+        self.mission_combo.addItems([
+            "Surveillance",
+            "Traffic Monitoring",
+            "Parking Monitoring",
+            "Campus Inspection",
+            "School Inspection",
+            "Hostel Area Inspection",
+            "Society Monitoring",
+            "Market Monitoring",
+            "Environmental Monitoring",
+            "Emergency Assessment",
+            "Other / Custom Task"
+        ])
+        self.mission_combo.currentTextChanged.connect(
+            self.update_custom_mission_field
+        )
+        task_layout.addWidget(self.mission_combo, 1, 1)
+
+        self.custom_mission_label = QLabel("Custom task name")
+        self.custom_mission_input = QLineEdit()
+        self.custom_mission_input.setPlaceholderText(
+            "Enter your custom task"
+        )
+        task_layout.addWidget(self.custom_mission_label, 1, 2)
+        task_layout.addWidget(self.custom_mission_input, 1, 3, 1, 2)
+        self.update_custom_mission_field(self.mission_combo.currentText())
+
         task_layout.addWidget(QLabel("Burst time"), 0, 2)
         self.burst_spin = QSpinBox()
         self.burst_spin.setRange(1, 100)
@@ -538,10 +568,10 @@ class MainWindow(QMainWindow):
         # Task table
         table_box = QGroupBox("TASK MANAGEMENT")
         table_layout = QVBoxLayout(table_box)
-        self.task_table = QTableWidget(0, 7)
+        self.task_table = QTableWidget(0, 8)
         self.task_table.setHorizontalHeaderLabels([
-            "Task ID", "Drone", "Arrival", "Burst",
-            "Priority", "Remaining", "Status"
+            "Task ID", "Mission", "Drone", "Arrival",
+            "Burst", "Priority", "Remaining", "Status"
         ])
         self.task_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.task_table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -568,15 +598,33 @@ class MainWindow(QMainWindow):
         self.control_button.style().unpolish(self.control_button)
         self.control_button.style().polish(self.control_button)
 
+    def update_custom_mission_field(self, mission):
+        is_custom = mission == "Other / Custom Task"
+        self.custom_mission_label.setVisible(is_custom)
+        self.custom_mission_input.setVisible(is_custom)
+
     def add_manual_task(self):
         if self.drone_combo.count() == 0:
             QMessageBox.warning(self, "No drones", "No drones are available.")
             return
 
+        selected_mission = self.mission_combo.currentText()
+        if selected_mission == "Other / Custom Task":
+            mission_name = self.custom_mission_input.text().strip()
+            if not mission_name:
+                QMessageBox.warning(
+                    self, "Missing task name",
+                    "Please enter your custom task name."
+                )
+                return
+        else:
+            mission_name = selected_mission
+
         drone_id = self.drone_combo.currentData()
         try:
             task = self.simulator.add_manual_task(
-                drone_id, self.burst_spin.value(), self.priority_spin.value()
+                drone_id, self.burst_spin.value(),
+                self.priority_spin.value(), mission_name
             )
         except (ValueError, AttributeError) as error:
             QMessageBox.warning(self, "Could not add task", str(error))
@@ -585,8 +633,9 @@ class MainWindow(QMainWindow):
         self.update_task_table()
         QMessageBox.information(
             self, "Task added",
-            f"{task.task_id} was added to the ready queue."
+            f"{task.task_id} - {task.mission_name} was added to the ready queue."
         )
+        self.custom_mission_input.clear()
 
     def simulate_failure(self):
         if self.failure_combo.count() == 0:
@@ -626,9 +675,9 @@ class MainWindow(QMainWindow):
 
         for row, task in enumerate(tasks):
             values = [
-                task.task_id, task.drone_id, str(task.arrival_time),
-                str(task.original_burst_time), str(task.priority),
-                str(task.remaining_burst_time), task.status
+                task.task_id, task.mission_name, task.drone_id,
+                str(task.arrival_time), str(task.original_burst_time),
+                str(task.priority), str(task.remaining_burst_time), task.status
             ]
             for col, value in enumerate(values):
                 self.task_table.setItem(row, col, QTableWidgetItem(value))
